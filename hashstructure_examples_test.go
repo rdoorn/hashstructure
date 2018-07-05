@@ -26,7 +26,7 @@ func ExampleHash() {
 		panic(err)
 	}
 
-	fmt.Printf("%d", hash)
+	fmt.Printf("%x", hash)
 	// Output:
-	// 6691276962590150517
+	// 62aace8c92f6ea9c4699a62da03c08c1458ebbf0331210a8a0e6b43536c59c68
 }

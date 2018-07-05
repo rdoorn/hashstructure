@@ -1,9 +1,13 @@
 package hashstructure
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHash_identity(t *testing.T) {
@@ -37,7 +41,7 @@ func TestHash_identity(t *testing.T) {
 	for _, tc := range cases {
 		// We run the test 100 times to try to tease out variability
 		// in the runtime in terms of ordering.
-		valuelist := make([]uint64, 100)
+		valuelist := make([][]byte, 100)
 		for i, _ := range valuelist {
 			v, err := Hash(tc, nil)
 			if err != nil {
@@ -48,14 +52,14 @@ func TestHash_identity(t *testing.T) {
 		}
 
 		// Zero is always wrong
-		if valuelist[0] == 0 {
+		if bytes.Equal(valuelist[0], []byte{}) {
 			t.Fatalf("zero hash: %#v", tc)
 		}
 
 		// Make sure all the values match
 		t.Logf("%#v: %d", tc, valuelist[0])
 		for i := 1; i < len(valuelist); i++ {
-			if valuelist[i] != valuelist[0] {
+			if !bytes.Equal(valuelist[i], valuelist[0]) {
 				t.Fatalf("non-matching: %d, %d\n\n%#v", i, 0, tc)
 			}
 		}
@@ -173,12 +177,12 @@ func TestHash_equal(t *testing.T) {
 			}
 
 			// Zero is always wrong
-			if one == 0 {
+			if bytes.Equal(one, []byte{}) {
 				t.Fatalf("zero hash: %#v", tc.One)
 			}
 
 			// Compare
-			if (one == two) != tc.Match {
+			if bytes.Equal(one, two) != tc.Match {
 				t.Fatalf("bad, expected: %#v\n\n%#v\n\n%#v", tc.Match, tc.One, tc.Two)
 			}
 		})
@@ -262,12 +266,12 @@ func TestHash_equalIgnore(t *testing.T) {
 		}
 
 		// Zero is always wrong
-		if one == 0 {
+		if bytes.Equal(one, []byte{}) {
 			t.Fatalf("zero hash: %#v", tc.One)
 		}
 
 		// Compare
-		if (one == two) != tc.Match {
+		if bytes.Equal(one, two) != tc.Match {
 			t.Fatalf("bad, expected: %#v\n\n%#v\n\n%#v", tc.Match, tc.One, tc.Two)
 		}
 	}
@@ -391,12 +395,12 @@ func TestHash_equalNil(t *testing.T) {
 		}
 
 		// Zero is always wrong
-		if one == 0 {
+		if bytes.Equal(one, []byte{}) {
 			t.Fatalf("zero hash: %#v", tc.One)
 		}
 
 		// Compare
-		if (one == two) != tc.Match {
+		if bytes.Equal(one, two) != tc.Match {
 			t.Fatalf("bad, expected: %#v\n\n%#v\n\n%#v", tc.Match, tc.One, tc.Two)
 		}
 	}
@@ -436,12 +440,12 @@ func TestHash_equalSet(t *testing.T) {
 		}
 
 		// Zero is always wrong
-		if one == 0 {
+		if bytes.Equal(one, []byte{}) {
 			t.Fatalf("zero hash: %#v", tc.One)
 		}
 
 		// Compare
-		if (one == two) != tc.Match {
+		if bytes.Equal(one, two) != tc.Match {
 			t.Fatalf("bad, expected: %#v\n\n%#v\n\n%#v", tc.Match, tc.One, tc.Two)
 		}
 	}
@@ -482,12 +486,12 @@ func TestHash_includable(t *testing.T) {
 		}
 
 		// Zero is always wrong
-		if one == 0 {
+		if bytes.Equal(one, []byte{}) {
 			t.Fatalf("zero hash: %#v", tc.One)
 		}
 
 		// Compare
-		if (one == two) != tc.Match {
+		if bytes.Equal(one, two) != tc.Match {
 			t.Fatalf("bad, expected: %#v\n\n%#v\n\n%#v", tc.Match, tc.One, tc.Two)
 		}
 	}
@@ -528,15 +532,31 @@ func TestHash_includableMap(t *testing.T) {
 		}
 
 		// Zero is always wrong
-		if one == 0 {
+		if bytes.Equal(one, []byte{}) {
 			t.Fatalf("zero hash: %#v", tc.One)
 		}
 
 		// Compare
-		if (one == two) != tc.Match {
+		if bytes.Equal(one, two) != tc.Match {
 			t.Fatalf("bad, expected: %#v\n\n%#v\n\n%#v", tc.Match, tc.One, tc.Two)
 		}
 	}
+}
+
+func TestHashFunctionsOrdered(t *testing.T) {
+	hash1 := []byte("Test hash number 1-----------------------------------------------------------------------------------------------------------------------------------")
+	hash2 := []byte("Test hash number 2-----------------------------------------------------------------------------------------------------------------------------------")
+	sum := hashUpdateOrdered(sha256.New(), hash1, hash2)
+	sum2 := hashUpdateOrdered(sha256.New(), hash2, hash1)
+	assert.NotEqual(t, sum, sum2, "sorted should not equal")
+}
+
+func TestHashFunctionsUnOrdered(t *testing.T) {
+	hash1 := []byte("Test hash number 1-----------------------------------------------------------------------------------------------------------------------------------")
+	hash2 := []byte("Test hash number 2-----------------------------------------------------------------------------------------------------------------------------------")
+	sum := hashUpdateUnordered(sha256.New(), hash1, hash2)
+	sum2 := hashUpdateUnordered(sha256.New(), hash2, hash1)
+	assert.Equal(t, sum, sum2, "unsorted should equal")
 }
 
 type testIncludable struct {
